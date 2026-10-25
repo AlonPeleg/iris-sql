@@ -1,0 +1,357 @@
+{
+  "name": "iris-sql-workbench",
+  "displayName": "IRIS SQL Workbench",
+  "description": "Browse the SQL tables and stored procedures of an InterSystems IRIS / Caché namespace and run queries, using the connection of your InterSystems namespace folders.",
+  "publisher": "alonpe",
+  "version": "0.3.0",
+  "icon": "media/icon.png",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.80.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "keywords": [
+    "intersystems",
+    "iris",
+    "cache",
+    "sql",
+    "objectscript"
+  ],
+  "activationEvents": [
+    "onView:irisSql.tree",
+    "onLanguage:sql"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "irisSql",
+          "title": "IRIS SQL",
+          "icon": "images/iris-sql-icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "irisSql": [
+        {
+          "id": "irisSql.tree",
+          "name": "Namespaces"
+        }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "irisSql.tree",
+        "contents": "No InterSystems namespace found in this workspace.\nOpen a server namespace folder (isfs) or a folder with objectscript.conn, then refresh.\n[Refresh](command:irisSql.refresh)"
+      }
+    ],
+    "commands": [
+      {
+        "command": "irisSql.refresh",
+        "title": "Refresh",
+        "category": "IRIS SQL",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "irisSql.newQuery",
+        "title": "New Query",
+        "category": "IRIS SQL",
+        "icon": "$(new-file)"
+      },
+      {
+        "command": "irisSql.runQuery",
+        "title": "Run Query",
+        "category": "IRIS SQL",
+        "icon": "$(play)"
+      },
+      {
+        "command": "irisSql.pickNamespace",
+        "title": "Choose Namespace for This Query...",
+        "category": "IRIS SQL"
+      },
+      {
+        "command": "irisSql.selectTop",
+        "title": "Select Top Rows",
+        "category": "IRIS SQL",
+        "icon": "$(table)"
+      },
+      {
+        "command": "irisSql.countRows",
+        "title": "Count Rows",
+        "category": "IRIS SQL"
+      },
+      {
+        "command": "irisSql.showColumns",
+        "title": "Show Columns",
+        "category": "IRIS SQL"
+      },
+      {
+        "command": "irisSql.queryFromTable",
+        "title": "New Query on This Table",
+        "category": "IRIS SQL",
+        "icon": "$(edit)"
+      },
+      {
+        "command": "irisSql.openClass",
+        "title": "Open Class",
+        "category": "IRIS SQL",
+        "icon": "$(go-to-file)"
+      },
+      {
+        "command": "irisSql.copyName",
+        "title": "Copy SQL Name",
+        "category": "IRIS SQL"
+      },
+      {
+        "command": "irisSql.callProcedure",
+        "title": "Call Procedure...",
+        "category": "IRIS SQL",
+        "icon": "$(play)"
+      },
+      {
+        "command": "irisSql.forgetPassword",
+        "title": "Forget Password Typed This Session",
+        "category": "IRIS SQL"
+      },
+      {
+        "command": "irisSql.signInAs",
+        "title": "Sign in as Another User...",
+        "category": "IRIS SQL",
+        "icon": "$(account)"
+      },
+      {
+        "command": "irisSql.useDefaultLogin",
+        "title": "Use Default Login",
+        "category": "IRIS SQL"
+      },
+      {
+        "command": "irisSql.filter",
+        "title": "Filter...",
+        "category": "IRIS SQL",
+        "icon": "$(filter)"
+      },
+      {
+        "command": "irisSql.clearFilter",
+        "title": "Clear Filter",
+        "category": "IRIS SQL",
+        "icon": "$(filter-filled)"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "irisSql.filter",
+          "when": "view == irisSql.tree && !irisSql.filtered",
+          "group": "navigation@0"
+        },
+        {
+          "command": "irisSql.clearFilter",
+          "when": "view == irisSql.tree && irisSql.filtered",
+          "group": "navigation@0"
+        },
+        {
+          "command": "irisSql.newQuery",
+          "when": "view == irisSql.tree",
+          "group": "navigation@1"
+        },
+        {
+          "command": "irisSql.refresh",
+          "when": "view == irisSql.tree",
+          "group": "navigation@2"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "irisSql.newQuery",
+          "when": "view == irisSql.tree && viewItem =~ /^namespace/",
+          "group": "inline"
+        },
+        {
+          "command": "irisSql.newQuery",
+          "when": "view == irisSql.tree && viewItem =~ /^namespace/",
+          "group": "1@1"
+        },
+        {
+          "command": "irisSql.queryFromTable",
+          "when": "view == irisSql.tree && viewItem == table",
+          "group": "inline@1"
+        },
+        {
+          "command": "irisSql.openClass",
+          "when": "view == irisSql.tree && viewItem == table",
+          "group": "inline@2"
+        },
+        {
+          "command": "irisSql.selectTop",
+          "when": "view == irisSql.tree && viewItem == table",
+          "group": "1@1"
+        },
+        {
+          "command": "irisSql.countRows",
+          "when": "view == irisSql.tree && viewItem == table",
+          "group": "1@2"
+        },
+        {
+          "command": "irisSql.showColumns",
+          "when": "view == irisSql.tree && viewItem == table",
+          "group": "1@3"
+        },
+        {
+          "command": "irisSql.queryFromTable",
+          "when": "view == irisSql.tree && viewItem == table",
+          "group": "2@1"
+        },
+        {
+          "command": "irisSql.openClass",
+          "when": "view == irisSql.tree && viewItem == table",
+          "group": "2@2"
+        },
+        {
+          "command": "irisSql.copyName",
+          "when": "view == irisSql.tree && (viewItem == table || viewItem == procedure)",
+          "group": "3@1"
+        },
+        {
+          "command": "irisSql.callProcedure",
+          "when": "view == irisSql.tree && viewItem == procedure",
+          "group": "inline"
+        },
+        {
+          "command": "irisSql.callProcedure",
+          "when": "view == irisSql.tree && viewItem == procedure",
+          "group": "1@1"
+        },
+        {
+          "command": "irisSql.signInAs",
+          "when": "view == irisSql.tree && viewItem =~ /^namespace/",
+          "group": "2@1"
+        },
+        {
+          "command": "irisSql.useDefaultLogin",
+          "when": "view == irisSql.tree && viewItem == namespaceOther",
+          "group": "2@2"
+        }
+      ],
+      "editor/title": [
+        {
+          "command": "irisSql.runQuery",
+          "when": "editorLangId == sql",
+          "group": "navigation"
+        }
+      ],
+      "editor/context": [
+        {
+          "command": "irisSql.runQuery",
+          "when": "editorLangId == sql",
+          "group": "irisSql@1"
+        },
+        {
+          "command": "irisSql.pickNamespace",
+          "when": "editorLangId == sql",
+          "group": "irisSql@2"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "irisSql.selectTop",
+          "when": "false"
+        },
+        {
+          "command": "irisSql.countRows",
+          "when": "false"
+        },
+        {
+          "command": "irisSql.showColumns",
+          "when": "false"
+        },
+        {
+          "command": "irisSql.queryFromTable",
+          "when": "false"
+        },
+        {
+          "command": "irisSql.openClass",
+          "when": "false"
+        },
+        {
+          "command": "irisSql.copyName",
+          "when": "false"
+        },
+        {
+          "command": "irisSql.callProcedure",
+          "when": "false"
+        },
+        {
+          "command": "irisSql.useDefaultLogin",
+          "when": "false"
+        },
+        {
+          "command": "irisSql.clearFilter",
+          "when": "irisSql.filtered"
+        }
+      ]
+    },
+    "keybindings": [
+      {
+        "command": "irisSql.runQuery",
+        "key": "ctrl+enter",
+        "mac": "cmd+enter",
+        "when": "editorTextFocus && editorLangId == sql"
+      }
+    ],
+    "configuration": {
+      "title": "IRIS SQL Workbench",
+      "properties": {
+        "irisSql.topRows": {
+          "type": "number",
+          "default": 100,
+          "minimum": 1,
+          "description": "How many rows \"Select Top Rows\" reads."
+        },
+        "irisSql.maxRowsShown": {
+          "type": "number",
+          "default": 2000,
+          "minimum": 1,
+          "description": "Most rows drawn in the results grid. Copy / Save CSV still get every row the server returned."
+        },
+        "irisSql.allowSelfSignedCert": {
+          "type": "boolean",
+          "default": false,
+          "description": "Accept a self-signed HTTPS certificate from the server. Only for trusted dev servers."
+        },
+        "irisSql.timeoutSeconds": {
+          "type": "number",
+          "default": 120,
+          "minimum": 5,
+          "description": "How long a query may run before it is given up."
+        },
+        "irisSql.confirmWrites": {
+          "type": "boolean",
+          "default": true,
+          "description": "Ask before running a statement that is not SELECT / WITH / CALL (INSERT, UPDATE, DELETE, DDL...)."
+        },
+        "irisSql.showSystemSchemas": {
+          "type": "boolean",
+          "default": false,
+          "description": "Also list system schemas (%..., INFORMATION_SCHEMA, Ens_...)."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./"
+  },
+  "devDependencies": {
+    "@types/node": "18.x",
+    "@types/vscode": "~1.80.0",
+    "typescript": "^5.4.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/AlonPeleg/iris-sql-workbench"
+  }
+}
