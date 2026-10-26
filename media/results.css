@@ -1,0 +1,99 @@
+/* IRIS SQL Results. The page never scrolls: the toolbar stays on top, and the grid is a box filling the rest that
+   scrolls on its own both ways - column titles stay at the top, the # column on the left, the horizontal
+   scrollbar is always at the bottom of the window. */
+html, body { height: 100%; }
+body { margin: 0; padding: 0; color: var(--vscode-foreground); background: var(--vscode-editor-background);
+       font-family: var(--vscode-font-family); font-size: var(--vscode-font-size, 13px);
+       display: flex; flex-direction: column; overflow: hidden; }
+#top { flex: 0 0 auto; background: var(--vscode-editor-background);
+       border-bottom: 1px solid var(--vscode-panel-border, rgba(128,128,128,.35)); padding: 8px 12px; }
+#where { font-size: 12px; color: var(--vscode-descriptionForeground); margin-bottom: 4px; }
+
+/* the query: editable, runs with Ctrl+Enter / Run; grows with its lines up to 8, then scrolls */
+#sql { display: block; width: 100%; box-sizing: border-box; resize: vertical; margin: 0 0 6px;
+       font-family: var(--vscode-editor-font-family, monospace); font-size: 12px; line-height: 1.4;
+       color: var(--vscode-input-foreground); background: var(--vscode-input-background);
+       border: 1px solid var(--vscode-input-border, transparent); border-radius: 2px; padding: 4px 6px; outline: none; }
+#sql:focus { border-color: var(--vscode-focusBorder); }
+
+/* chips: conditions (server), sort, count by, and here-only filters (dashed) */
+#chips { display: flex; flex-wrap: wrap; gap: 4px; margin: 0 0 6px; }
+#chips:empty { display: none; }
+.chip { display: inline-flex; align-items: center; gap: 4px; max-width: 420px; padding: 1px 4px 1px 6px; font-size: 12px;
+        border-radius: 10px; border: 1px solid var(--vscode-focusBorder, #0e639c);
+        background: var(--vscode-badge-background, rgba(14,99,156,.35)); color: var(--vscode-badge-foreground, inherit); }
+.chip .t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; font-family: var(--vscode-editor-font-family, monospace); }
+.chip .t:hover { text-decoration: underline; }
+.chip .x, .chip .dot { cursor: pointer; opacity: .75; padding: 0 2px; }
+.chip .x:hover, .chip .dot:hover { opacity: 1; }
+.chip.off { opacity: .55; }
+.chip.off .t { text-decoration: line-through; }
+.chip.local { border-style: dashed; background: transparent; color: var(--vscode-foreground); }
+.chip .tag { font-size: 10px; opacity: .75; }
+.chip.kind { background: transparent; color: var(--vscode-foreground); }
+
+.bar { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.bar .stat { font-size: 12px; margin-right: 6px; }
+.bar .spacer { flex: 1; }
+input[type=text], select { font: inherit; font-size: 12px; color: var(--vscode-input-foreground); background: var(--vscode-input-background);
+       border: 1px solid var(--vscode-input-border, transparent); padding: 3px 6px; border-radius: 2px; outline: none; }
+#filter { width: 200px; }
+input[type=text]:focus, select:focus { border-color: var(--vscode-focusBorder); }
+button { font: inherit; font-size: 12px; padding: 3px 10px; border: 1px solid transparent; border-radius: 2px; cursor: pointer;
+         color: var(--vscode-button-secondaryForeground); background: var(--vscode-button-secondaryBackground); }
+button:hover { background: var(--vscode-button-secondaryHoverBackground); }
+button:disabled { opacity: .45; cursor: default; }
+button.primary { color: var(--vscode-button-foreground); background: var(--vscode-button-background); }
+button.primary:hover { background: var(--vscode-button-hoverBackground); }
+button.icon { padding: 3px 7px; }
+
+#msg { flex: 0 0 auto; padding: 16px 12px; }
+#msg.err { color: var(--vscode-errorForeground); white-space: pre-wrap; font-family: var(--vscode-editor-font-family, monospace); }
+#grid { flex: 1 1 auto; min-height: 0; overflow: auto; }
+/* separate borders (not collapsed): with collapsed borders, Chrome lets scrolled rows show through above a sticky header */
+table { border-collapse: separate; border-spacing: 0; font-family: var(--vscode-editor-font-family, monospace); font-size: var(--vscode-editor-font-size, 12px); }
+th, td { border-right: 1px solid var(--vscode-panel-border, rgba(128,128,128,.25)); border-bottom: 1px solid var(--vscode-panel-border, rgba(128,128,128,.25));
+         padding: 2px 8px; text-align: left; vertical-align: top;
+         max-width: 480px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+th { position: sticky; top: 0; z-index: 2; background: var(--vscode-editorWidget-background, var(--vscode-editor-background)); cursor: pointer;
+     user-select: none; font-weight: 600; }
+th:first-child { left: 0; z-index: 3; cursor: default; }          /* the corner stays put both ways */
+th:first-child, td.rn { border-left: 1px solid var(--vscode-panel-border, rgba(128,128,128,.25)); }
+th .arrow { opacity: .7; margin-left: 4px; }
+th.drop-before { box-shadow: inset 3px 0 0 var(--vscode-focusBorder); }
+td.n { color: var(--vscode-descriptionForeground); font-style: italic; }
+td.num { text-align: right; }
+td.rn { color: var(--vscode-editorLineNumber-foreground); text-align: right; user-select: none;
+        position: sticky; left: 0; z-index: 1; background: var(--vscode-editor-background); }
+tr:hover td { background: var(--vscode-list-hoverBackground); }
+/* the sticky # cell needs a solid color under the (see-through) hover color, or other cells show through */
+tr:hover td.rn { background: linear-gradient(var(--vscode-list-hoverBackground), var(--vscode-list-hoverBackground)), var(--vscode-editor-background); }
+td.sel { outline: 1px solid var(--vscode-focusBorder); outline-offset: -1px; }
+.note { flex: 0 0 auto; font-size: 12px; color: var(--vscode-descriptionForeground); padding: 6px 12px; }
+.note:empty { display: none; }
+.running { display: inline-block; width: 10px; height: 10px; border-radius: 50%; border: 2px solid var(--vscode-progressBar-background, #0e70c0);
+           border-right-color: transparent; animation: spin .8s linear infinite; vertical-align: -1px; margin-right: 6px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* right-click menu, drawn like VS Code's own */
+.menu { position: fixed; z-index: 20; min-width: 220px; max-width: 460px; padding: 4px 0; font-size: 12px;
+        color: var(--vscode-menu-foreground, var(--vscode-foreground)); background: var(--vscode-menu-background, var(--vscode-editorWidget-background));
+        border: 1px solid var(--vscode-menu-border, var(--vscode-widget-border, rgba(128,128,128,.35))); border-radius: 4px;
+        box-shadow: 0 2px 8px var(--vscode-widget-shadow, rgba(0,0,0,.36)); }
+.menu .item { padding: 4px 18px 4px 12px; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.menu .item:hover, .menu .item.focus { color: var(--vscode-menu-selectionForeground, inherit); background: var(--vscode-menu-selectionBackground, var(--vscode-list-activeSelectionBackground)); }
+.menu .sep { height: 1px; margin: 4px 0; background: var(--vscode-menu-separatorBackground, rgba(128,128,128,.35)); }
+.menu .head { padding: 2px 12px 4px; font-size: 11px; color: var(--vscode-descriptionForeground); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* the condition box (Filter column... / editing a chip) and the Columns list */
+.pop { position: fixed; z-index: 21; padding: 10px 12px; font-size: 12px; min-width: 260px;
+       background: var(--vscode-editorWidget-background); color: var(--vscode-foreground);
+       border: 1px solid var(--vscode-widget-border, rgba(128,128,128,.35)); border-radius: 4px;
+       box-shadow: 0 2px 8px var(--vscode-widget-shadow, rgba(0,0,0,.36)); }
+.pop .ttl { font-weight: 600; margin-bottom: 8px; font-family: var(--vscode-editor-font-family, monospace); }
+.pop .row { display: flex; gap: 6px; align-items: center; margin-bottom: 8px; }
+.pop .row input[type=text] { flex: 1; min-width: 120px; }
+.pop .btns { display: flex; gap: 6px; justify-content: flex-end; }
+.pop .hint { font-size: 11px; color: var(--vscode-descriptionForeground); margin: -2px 0 8px; }
+.pop .cols { max-height: 50vh; overflow: auto; margin-bottom: 8px; }
+.pop .cols label { display: flex; gap: 6px; align-items: center; padding: 2px 0; font-family: var(--vscode-editor-font-family, monospace); cursor: pointer; }

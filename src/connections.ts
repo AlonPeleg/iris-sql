@@ -25,6 +25,7 @@ const typedPasswords = new Map<string, string>();     // serverName|user -> pass
 let log: (s: string) => void = () => undefined;
 let store: vscode.Memento | undefined;
 const LOGIN_KEY = 'irisSql.loginUser';                 // namespace id -> username signed in as
+const USERS_KEY = 'irisSql.usedUsers';                 // namespace id -> other users signed in with before (newest first)
 
 export function setLog(fn: (s: string) => void) { log = fn; }
 export function setStore(m: vscode.Memento) { store = m; }
@@ -34,10 +35,26 @@ export function forgetTypedPasswords() { typedPasswords.clear(); }
 export function loginUserFor(t: NamespaceTarget): string | undefined {
     return store?.get<Record<string, string>>(LOGIN_KEY, {})[t.id] || undefined;
 }
-async function setLoginUser(t: NamespaceTarget, user: string | undefined) {
+/** Signs this namespace in as `user` (undefined: the connection's own user). The password is asked when needed. */
+export async function setLoginUser(t: NamespaceTarget, user: string | undefined) {
     const all = { ...(store?.get<Record<string, string>>(LOGIN_KEY, {}) ?? {}) };
     if (user) all[t.id] = user; else delete all[t.id];
     await store?.update(LOGIN_KEY, all);
+    if (user) {
+        const used = { ...(store?.get<Record<string, string[]>>(USERS_KEY, {}) ?? {}) };
+        used[t.id] = [user, ...(used[t.id] ?? []).filter(u => u.toLowerCase() !== user.toLowerCase())].slice(0, 5);
+        await store?.update(USERS_KEY, used);
+    }
+}
+
+/** Other users this namespace was signed in with before (for the login choice), newest first. */
+export function usedUsersFor(t: NamespaceTarget): string[] {
+    return store?.get<Record<string, string[]>>(USERS_KEY, {})[t.id] ?? [];
+}
+
+/** The connection as it is now (no prompt): for ending its server session. */
+export async function currentConnection(t: NamespaceTarget): Promise<Connection | undefined> {
+    return connectionFor(t, { ask: false });
 }
 
 const pwKey = (t: NamespaceTarget, user: string) => `${t.serverName}|${user}`.toLowerCase();
@@ -179,8 +196,7 @@ export async function signInAs(t: NamespaceTarget): Promise<boolean> {
     if (!user) return false;
     const p = await askPassword(t, user.trim(), false);
     if (!p) return false;
-    await setLoginUser(t, user.trim());
-    forgetSessions();
+    await setLoginUser(t, user.trim());   // sessions are kept per user + password, so the old one is not reused
     return true;
 }
 
@@ -189,7 +205,6 @@ export async function useDefaultLogin(t: NamespaceTarget) {
     const other = loginUserFor(t);
     if (other) typedPasswords.delete(pwKey(t, other));
     await setLoginUser(t, undefined);
-    forgetSessions();
 }
 
 /** The isfs URI of a class, in the namespace folder it was listed from (for "Open Class"). */

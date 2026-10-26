@@ -97,6 +97,30 @@ function post(c: Connection, path: string, body: unknown, o: QueryOptions, useSe
     });
 }
 
+/**
+ * Ends the server session this connection has (if any): the server would end it by itself after its idle timeout,
+ * but until then it can hold a license. Best effort - errors are ignored.
+ */
+export async function endSession(c: Connection, o: QueryOptions): Promise<void> {
+    const key = jarKey(c);
+    const jar = jars.get(key);
+    if (!jar || !jar.size) return;
+    const cookie = [...jar].map(([n, v]) => `${n}=${v}`).join('; ');
+    jars.delete(key);
+    await new Promise<void>(resolve => {
+        const lib = c.scheme === 'http' ? http : https;
+        const opts: https.RequestOptions = {
+            method: 'GET', host: c.host, port: c.port, path: c.pathPrefix + '/api/atelier/?CacheLogout=end',
+            headers: { Cookie: cookie, Accept: 'application/json' }, timeout: Math.min(o.timeoutMs, 10000)
+        };
+        if (c.scheme === 'https' && o.allowSelfSigned) opts.rejectUnauthorized = false;
+        const req = lib.request(opts, res => { res.resume(); res.on('end', () => resolve()); });
+        req.on('timeout', () => req.destroy());
+        req.on('error', () => resolve());
+        req.end();
+    });
+}
+
 /** Runs one SQL statement in the connection's namespace. */
 export async function runQuery(c: Connection, sql: string, params: unknown[], o: QueryOptions): Promise<QueryResult> {
     const path = `/api/atelier/v1/${encodeURIComponent(c.namespace)}/action/query`;

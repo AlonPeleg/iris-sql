@@ -3,7 +3,7 @@
   "displayName": "IRIS SQL Workbench",
   "description": "Browse the SQL tables and stored procedures of an InterSystems IRIS / Caché namespace and run queries, using the connection of your InterSystems namespace folders.",
   "publisher": "alonpe",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "icon": "media/icon.png",
   "license": "MIT",
   "engines": {
@@ -38,17 +38,23 @@
       "irisSql": [
         {
           "id": "irisSql.tree",
-          "name": "Namespaces"
+          "name": "Namespace"
         }
       ]
     },
     "viewsWelcome": [
       {
         "view": "irisSql.tree",
-        "contents": "No InterSystems namespace found in this workspace.\nOpen a server namespace folder (isfs) or a folder with objectscript.conn, then refresh.\n[Refresh](command:irisSql.refresh)"
+        "contents": "Choose the namespace to browse, and the user to sign in with.\n[Choose Namespace](command:irisSql.chooseNamespace)\nOnly namespaces open in this workspace are listed (server namespace folders, or folders with objectscript.conn)."
       }
     ],
     "commands": [
+      {
+        "command": "irisSql.chooseNamespace",
+        "title": "Choose Namespace...",
+        "category": "IRIS SQL",
+        "icon": "$(server-environment)"
+      },
       {
         "command": "irisSql.refresh",
         "title": "Refresh",
@@ -74,9 +80,19 @@
       },
       {
         "command": "irisSql.selectTop",
-        "title": "Select Top Rows",
+        "title": "Select Rows",
         "category": "IRIS SQL",
         "icon": "$(table)"
+      },
+      {
+        "command": "irisSql.selectLast100",
+        "title": "Select Last 100 Rows",
+        "category": "IRIS SQL"
+      },
+      {
+        "command": "irisSql.selectTopBottom",
+        "title": "Select Top / Bottom...",
+        "category": "IRIS SQL"
       },
       {
         "command": "irisSql.countRows",
@@ -135,7 +151,19 @@
       },
       {
         "command": "irisSql.clearFilter",
-        "title": "Clear Filter",
+        "title": "Clear All Filters",
+        "category": "IRIS SQL",
+        "icon": "$(filter-filled)"
+      },
+      {
+        "command": "irisSql.filterNamespace",
+        "title": "Filter This Namespace...",
+        "category": "IRIS SQL",
+        "icon": "$(filter)"
+      },
+      {
+        "command": "irisSql.clearNamespaceFilter",
+        "title": "Clear This Namespace's Filter",
         "category": "IRIS SQL",
         "icon": "$(filter-filled)"
       }
@@ -143,24 +171,29 @@
     "menus": {
       "view/title": [
         {
+          "command": "irisSql.chooseNamespace",
+          "when": "view == irisSql.tree",
+          "group": "navigation@0"
+        },
+        {
           "command": "irisSql.filter",
           "when": "view == irisSql.tree && !irisSql.filtered",
-          "group": "navigation@0"
+          "group": "navigation@1"
         },
         {
           "command": "irisSql.clearFilter",
           "when": "view == irisSql.tree && irisSql.filtered",
-          "group": "navigation@0"
+          "group": "navigation@1"
         },
         {
           "command": "irisSql.newQuery",
           "when": "view == irisSql.tree",
-          "group": "navigation@1"
+          "group": "navigation@2"
         },
         {
           "command": "irisSql.refresh",
           "when": "view == irisSql.tree",
-          "group": "navigation@2"
+          "group": "navigation@3"
         }
       ],
       "view/item/context": [
@@ -176,42 +209,42 @@
         },
         {
           "command": "irisSql.queryFromTable",
-          "when": "view == irisSql.tree && viewItem == table",
+          "when": "view == irisSql.tree && viewItem =~ /^table/",
           "group": "inline@1"
         },
         {
           "command": "irisSql.openClass",
-          "when": "view == irisSql.tree && viewItem == table",
+          "when": "view == irisSql.tree && viewItem =~ /^table/",
           "group": "inline@2"
         },
         {
           "command": "irisSql.selectTop",
-          "when": "view == irisSql.tree && viewItem == table",
+          "when": "view == irisSql.tree && viewItem =~ /^table/",
           "group": "1@1"
         },
         {
           "command": "irisSql.countRows",
-          "when": "view == irisSql.tree && viewItem == table",
-          "group": "1@2"
+          "when": "view == irisSql.tree && viewItem =~ /^table/",
+          "group": "1@4"
         },
         {
           "command": "irisSql.showColumns",
-          "when": "view == irisSql.tree && viewItem == table",
-          "group": "1@3"
+          "when": "view == irisSql.tree && viewItem =~ /^table/",
+          "group": "1@5"
         },
         {
           "command": "irisSql.queryFromTable",
-          "when": "view == irisSql.tree && viewItem == table",
+          "when": "view == irisSql.tree && viewItem =~ /^table/",
           "group": "2@1"
         },
         {
           "command": "irisSql.openClass",
-          "when": "view == irisSql.tree && viewItem == table",
+          "when": "view == irisSql.tree && viewItem =~ /^table/",
           "group": "2@2"
         },
         {
           "command": "irisSql.copyName",
-          "when": "view == irisSql.tree && (viewItem == table || viewItem == procedure)",
+          "when": "view == irisSql.tree && (viewItem =~ /^table/ || viewItem == procedure)",
           "group": "3@1"
         },
         {
@@ -231,8 +264,33 @@
         },
         {
           "command": "irisSql.useDefaultLogin",
-          "when": "view == irisSql.tree && viewItem == namespaceOther",
+          "when": "view == irisSql.tree && viewItem =~ /^namespaceOther/",
           "group": "2@2"
+        },
+        {
+          "command": "irisSql.filterNamespace",
+          "when": "view == irisSql.tree && viewItem =~ /^namespace/",
+          "group": "0@1"
+        },
+        {
+          "command": "irisSql.clearNamespaceFilter",
+          "when": "view == irisSql.tree && viewItem =~ /Filtered$/",
+          "group": "0@2"
+        },
+        {
+          "command": "irisSql.chooseNamespace",
+          "when": "view == irisSql.tree && viewItem =~ /^namespace/",
+          "group": "0@0"
+        },
+        {
+          "command": "irisSql.selectLast100",
+          "when": "view == irisSql.tree && viewItem == table",
+          "group": "1@2"
+        },
+        {
+          "command": "irisSql.selectTopBottom",
+          "when": "view == irisSql.tree && viewItem == table",
+          "group": "1@3"
         }
       ],
       "editor/title": [
@@ -290,6 +348,22 @@
         {
           "command": "irisSql.clearFilter",
           "when": "irisSql.filtered"
+        },
+        {
+          "command": "irisSql.filterNamespace",
+          "when": "false"
+        },
+        {
+          "command": "irisSql.clearNamespaceFilter",
+          "when": "false"
+        },
+        {
+          "command": "irisSql.selectLast100",
+          "when": "false"
+        },
+        {
+          "command": "irisSql.selectTopBottom",
+          "when": "false"
         }
       ]
     },
@@ -306,9 +380,9 @@
       "properties": {
         "irisSql.topRows": {
           "type": "number",
-          "default": 100,
-          "minimum": 1,
-          "description": "How many rows \"Select Top Rows\" reads."
+          "default": 0,
+          "minimum": 0,
+          "description": "What clicking a table reads: 0 (default) = every row (SELECT *); a number = only that many first rows (SELECT TOP n *). The whole result comes back from the server at once, so set a number if very large tables are slow. The grid draws at most irisSql.maxRowsShown rows; Copy / Save CSV get them all."
         },
         "irisSql.maxRowsShown": {
           "type": "number",
@@ -352,6 +426,6 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/AlonPeleg/iris-sql"
+    "url": "https://github.com/AlonPeleg/iris-sql-workbench"
   }
 }
