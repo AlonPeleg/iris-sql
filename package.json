@@ -3,7 +3,7 @@
   "displayName": "IRIS SQL Workbench",
   "description": "Browse the SQL tables and stored procedures of an InterSystems IRIS / Caché namespace and run queries, using the connection of your InterSystems namespace folders.",
   "publisher": "alonpe",
-  "version": "0.4.0",
+  "version": "0.4.2",
   "icon": "media/icon.png",
   "license": "MIT",
   "engines": {
@@ -92,6 +92,11 @@
       {
         "command": "irisSql.selectTopBottom",
         "title": "Select Top / Bottom...",
+        "category": "IRIS SQL"
+      },
+      {
+        "command": "irisSql.clearHistory",
+        "title": "Clear Query History",
         "category": "IRIS SQL"
       },
       {

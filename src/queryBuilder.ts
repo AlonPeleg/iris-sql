@@ -34,6 +34,8 @@ export interface QueryState {
     conds: Condition[];
     sort?: { col: string; dir: 'ASC' | 'DESC' };
     group?: string;        // count by this column
+    cols?: string[];       // Run with these columns: the SELECT list (empty / missing = *)
+    allCols?: string[];    // every column the query had with * (what the Columns box offers)
 }
 
 export const OP_LABEL: Record<Op, string> = {
@@ -203,7 +205,8 @@ export interface Built { sql: string; error?: string }
 /** The SQL to run for a state. */
 export function buildSql(st: QueryState): Built {
     const sh = shapeOf(st.base);
-    const extra = st.conds.some(c => c.enabled) || !!st.sort || !!st.group;
+    const cols = st.group ? [] : (st.cols ?? []);
+    const extra = st.conds.some(c => c.enabled) || !!st.sort || !!st.group || cols.length > 0;
     if (!extra) return { sql: sh.sql };
     if (sh.startsWithWith) return { sql: sh.sql, error: 'Conditions, sort and count cannot be added to a query that starts with WITH. Edit the SQL instead.' };
     let sql = withConditions(sh, st.conds);
@@ -223,7 +226,23 @@ export function buildSql(st: QueryState): Built {
             sql = `${without(now.sql, now.clauses, 'ORDER BY')} ${by}`;
         }
     }
-    return { sql };
+    return { sql: cols.length ? withColumns(sql, cols) : sql };
+}
+
+/** Only these columns: the * of a plain SELECT * is replaced; anything else is wrapped (its ORDER BY kept with TOP ALL). */
+function withColumns(sql: string, cols: string[]): string {
+    const list = cols.map(quoteIdent).join(', ');
+    const sh = shapeOf(sql);
+    if (sh.simpleStar) {
+        const sel = sh.clauses.find(c => c.kw === 'SELECT')!;
+        const head = sh.sql.slice(sel.start, sel.end).replace(/^(SELECT\s+(DISTINCT\s+)?(TOP\s+(\d+|ALL)\s+)?)\*\s*/i, `$1${list} `);
+        return sh.sql.slice(0, sel.start) + head + sh.sql.slice(sel.end);
+    }
+    let inner = sh.sql;
+    if (!sh.hasTop && sh.clauses.some(c => c.kw === 'ORDER BY') && !sh.clauses.some(c => c.kw === 'UNION')) {
+        inner = inner.replace(/^SELECT(\s+DISTINCT)?\s+/i, m => m.trimEnd() + ' TOP ALL ');
+    }
+    return `SELECT ${list} FROM (${inner}) AS q`;
 }
 
 let seq = 0;

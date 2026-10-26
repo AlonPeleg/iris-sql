@@ -18,12 +18,13 @@ export function resultsHtml(nonce: string, cspSource: string, scriptUri: string,
   <div class="bar">
     <button id="back" class="icon" title="Back to the previous query (Alt+Left)" disabled>&#8592;</button>
     <button id="forward" class="icon" title="Forward (Alt+Right)" disabled>&#8594;</button>
+    <button id="historyBtn" class="icon" title="Query history: choose a query to run again, or clear the list" disabled>&#9662;</button>
     <span class="stat" id="stat"></span>
     <input type="text" id="filter" placeholder="Filter rows (here only)" spellcheck="false">
     <span class="spacer"></span>
     <button id="rerun" class="primary" title="Run the query above (Ctrl+Enter)">Run</button>
     <button id="toEditor" title="Continue with this query in a .sql editor">Open in Editor</button>
-    <button id="columnsBtn" title="Show, hide and reorder columns (drag a column title to move it)">Columns</button>
+    <button id="columnsBtn" title="Choose columns: hide them here, or run the query with only those (drag a column title to move it)">Columns</button>
     <button id="copyTsv" title="Tab-separated, pastes into Excel as columns">Copy for Excel</button>
     <button id="copyCsv">Copy CSV</button>
     <button id="saveCsv">Save CSV...</button>

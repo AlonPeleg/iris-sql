@@ -185,6 +185,14 @@
       click: () => send({ type: 'sort', col: state.sort.col, dir: state.sort.dir === 'DESC' ? 'ASC' : 'DESC' }),
       remove: () => send({ type: 'clearSort' })
     }));
+    if (state.cols && state.cols.length && !state.group) {
+      const names = state.cols.slice(0, 3).join(', ') + (state.cols.length > 3 ? ' (+' + (state.cols.length - 3) + ')' : '');
+      box.appendChild(chip('columns: ' + names, {
+        cls: 'kind', title: 'Only these columns are read: ' + state.cols.join(', ') + '\nClick: change · ✕: back to all columns (*)',
+        click: () => openColumnsBox($('columnsBtn')),
+        remove: () => send({ type: 'setCols', cols: [] })
+      }));
+    }
     if (state.group) box.appendChild(chip('count by ' + state.group, {
       cls: 'kind', title: 'Rows counted by ' + state.group + '. Right-click a value: show those rows · ✕: back to the rows',
       remove: () => send({ type: 'clearGroup' })
@@ -213,7 +221,7 @@
     if (head) menuEl.appendChild(el('div', 'head', head));
     for (const it of items) {
       if (it === '-') { menuEl.appendChild(el('div', 'sep')); continue; }
-      const d = el('div', 'item', it.label);
+      const d = el('div', 'item' + (it.cls ? ' ' + it.cls : ''), it.label);
       d.title = it.title || it.label;
       d.addEventListener('click', ev => { ev.stopPropagation(); closeMenu(); it.run(ev); });
       menuEl.appendChild(d);
@@ -355,35 +363,79 @@
     if (!v1.hidden) v1.select();
   }
 
-  // ---------------------------------------------------------------- Columns list ----
-  $('columnsBtn').addEventListener('click', e => {
+  // ---------------------------------------------------------------- Columns box ----
+  // Ticking does nothing yet (no redraw, no query): "Hide here" hides on this page, "Run with these" runs the query
+  // with only the ticked columns (all or none ticked = SELECT *).
+  function openColumnsBox(anchor) {
     if (!data) return;
     closeMenu(); closePop();
-    popEl = el('div', 'pop');
+    const all = (state.allCols && state.allCols.length) ? state.allCols : data.columns;
+    let order = colOrder.filter(c => all.includes(c) && data.columns.includes(c)).concat(all.filter(c => !data.columns.includes(c)));
+    all.forEach(c => { if (!order.includes(c)) order.push(c); });
+    const ticked = new Set(order.filter(c => data.columns.includes(c) && !hidden.has(c)));
+    popEl = el('div', 'pop colsbox');
     popEl.appendChild(el('div', 'ttl', 'Columns'));
+    const search = el('input'); search.type = 'text'; search.placeholder = 'Search columns...'; search.spellcheck = false; search.className = 'colsearch';
+    popEl.appendChild(search);
     const list = el('div', 'cols');
-    for (const c of colOrder.filter(x => data.columns.includes(x))) {
-      const lab = el('label');
-      const cb = el('input'); cb.type = 'checkbox'; cb.checked = !hidden.has(c);
-      cb.addEventListener('change', () => { cb.checked ? hidden.delete(c) : hidden.add(c); draw(); });
-      lab.append(cb, document.createTextNode(c));
-      list.appendChild(lab);
-    }
-    popEl.appendChild(list);
+    const count = el('div', 'hint');
+    const recount = () => { count.textContent = ticked.size + ' of ' + order.length + ' ticked' + (ticked.size === 0 || ticked.size === order.length ? ' · runs as SELECT *' : ''); };
+    const fill = () => {
+      list.textContent = '';
+      const q = search.value.trim().toLowerCase();
+      for (const c of order) {
+        if (q && !c.toLowerCase().includes(q)) continue;
+        const lab = el('label');
+        const cb = el('input'); cb.type = 'checkbox'; cb.checked = ticked.has(c);
+        cb.addEventListener('change', () => { cb.checked ? ticked.add(c) : ticked.delete(c); recount(); });
+        lab.append(cb, document.createTextNode(c));
+        if (!data.columns.includes(c)) { const n = el('span', 'notloaded', 'not loaded'); n.title = 'Not in the rows shown: Run with these to read it'; lab.appendChild(n); }
+        list.appendChild(lab);
+      }
+      if (!list.childNodes.length) list.appendChild(el('div', 'hint', 'No column matches.'));
+      recount();
+    };
+    search.addEventListener('input', fill);
+    const quick = el('div', 'quick');
+    const link = (text, title, fn) => { const x = el('a', '', text); x.href = '#'; x.title = title; x.addEventListener('click', ev => { ev.preventDefault(); fn(); fill(); }); return x; };
+    const shown = () => { const q = search.value.trim().toLowerCase(); return order.filter(c => !q || c.toLowerCase().includes(q)); };
+    quick.append(
+      link('All', 'Tick every column (in the search, if any)', () => shown().forEach(c => ticked.add(c))), document.createTextNode(' · '),
+      link('None', 'Untick every column (in the search, if any)', () => shown().forEach(c => ticked.delete(c))), document.createTextNode(' · '),
+      link('Original order', 'The order of the table', () => { order = all.slice(); }));
+    popEl.append(list, quick, count);
     const btns = el('div', 'btns');
-    const all = el('button', '', 'Show all'); all.addEventListener('click', () => { hidden.clear(); closePop(); draw(); });
-    const reset = el('button', '', 'Original order'); reset.addEventListener('click', () => { colOrder = data.columns.slice(); closePop(); draw(); });
-    const close = el('button', 'primary', 'Close'); close.addEventListener('click', closePop);
-    btns.append(all, reset, close);
+    const cancel = el('button', '', 'Cancel'); cancel.addEventListener('click', closePop);
+    const here = el('button', '', 'Hide here');
+    here.title = 'Show only the ticked columns on this page (no query)';
+    here.addEventListener('click', () => {
+      colOrder = order.filter(c => data.columns.includes(c)).concat(colOrder.filter(c => !order.includes(c)));
+      hidden.clear();
+      if (ticked.size) data.columns.forEach(c => { if (!ticked.has(c)) hidden.add(c); });
+      closePop(); draw();
+    });
+    const run = el('button', 'primary', 'Run with these');
+    run.title = 'Run the query with only the ticked columns (all or none ticked = SELECT *)';
+    run.addEventListener('click', () => {
+      const cols = order.filter(c => ticked.has(c));
+      colOrder = cols.concat(order.filter(c => !ticked.has(c)));
+      hidden.clear();
+      closePop();
+      send({ type: 'setCols', cols });
+    });
+    btns.append(cancel, here, run);
     popEl.appendChild(btns);
     popEl.addEventListener('keydown', ev => { if (ev.key === 'Escape') closePop(); });
-    const r = e.target.getBoundingClientRect();
+    fill();
+    const r = anchor.getBoundingClientRect();
     place(popEl, r.left, r.bottom + 4);
-  });
+    search.focus();
+  }
+  $('columnsBtn').addEventListener('click', e => openColumnsBox(e.currentTarget));
 
   document.addEventListener('mousedown', e => {
-    if (menuEl && !menuEl.contains(e.target)) closeMenu();
-    if (popEl && !popEl.contains(e.target) && e.target.id !== 'columnsBtn') closePop();
+    if (menuEl && !menuEl.contains(e.target) && !(e.target.closest && e.target.closest('#historyBtn'))) closeMenu();
+    if (popEl && !popEl.contains(e.target) && !(e.target.closest && e.target.closest('#columnsBtn, .chip'))) closePop();
   });
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape') { closeMenu(); closePop(); }
@@ -411,6 +463,23 @@
   $('back').addEventListener('click', () => send({ type: 'back' }));
   $('forward').addEventListener('click', () => send({ type: 'forward' }));
 
+  // the history list: newest first, the query shown now marked; pick one to run it again (on its namespace and user)
+  let history = [];
+  const clock = t => { const d = new Date(t); return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); };
+  $('historyBtn').addEventListener('click', e => {
+    if (menuEl) { closeMenu(); return; }
+    const cur = history.find(h => h.current);
+    const items = history.map(h => ({
+      label: (h.current ? '\u2713 ' : '\u2003 ') + clock(h.at) + '  ' + (cur && h.where !== cur.where ? '[' + h.where + ']  ' : '') + h.sql.replace(/\s+/g, ' '),
+      title: h.where + '\n' + h.sql,
+      cls: 'hist' + (h.current ? ' cur' : ''),
+      run: () => { if (!h.current) send({ type: 'goto', index: h.i }); }
+    }));
+    items.push('-', { label: 'Clear history', title: 'Forget every query but the one shown now', run: () => send({ type: 'clearHistory' }) });
+    const r = e.currentTarget.getBoundingClientRect();
+    openMenu(items, r.left, r.bottom + 4, 'Query history (' + history.length + ')');
+  });
+
   // the query box: edit, then Run / Ctrl+Enter runs it on the same namespace and user
   const sqlBox = $('sql');
   const fitSql = () => { sqlBox.rows = Math.min(8, Math.max(1, sqlBox.value.split('\n').length)); };
@@ -425,9 +494,11 @@
   $('toEditor').addEventListener('click', () => send({ type: 'toEditor', sql: sqlBox.value }));
 
   function takeState(m) {
-    state = m.state || { conds: [], sort: null, group: null };
+    state = m.state || { conds: [], sort: null, group: null, cols: [], allCols: [] };
     $('back').disabled = !m.canBack;
     $('forward').disabled = !m.canForward;
+    history = m.history || [];
+    $('historyBtn').disabled = !history.length;
     $('where').textContent = m.where || '';
     setSql(m.sql);
   }
@@ -435,6 +506,11 @@
   window.addEventListener('message', ev => {
     const m = ev.data;
     if (!m) return;
+    if (m.type === 'state') {           // the history changed (cleared): only the arrows and the list
+      $('back').disabled = !m.canBack; $('forward').disabled = !m.canForward;
+      history = m.history || []; $('historyBtn').disabled = !history.length;
+      return;
+    }
     if (m.type === 'running') {
       takeState(m);
       $('msg').hidden = false; $('msg').className = ''; $('msg').textContent = '';

@@ -1,5 +1,15 @@
 # Change Log
 
+## [0.4.2]
+
+- New: **choose the columns the query reads.** The Columns box has a search, and ticking / unticking does nothing until you press a button: **Run with these** runs the query with only the ticked columns (`SELECT "ID", "Name" ...`; all or none ticked = `SELECT *`), **Hide here** only hides the others on the page (no query). The choice shows as a `columns: ...` chip (click to change, ✕ = back to `*`); filters and sort still work on columns that are not selected. Columns not read yet are listed as *not loaded*.
+- Fix: ticking a column in the Columns box redrew the whole grid each time, which lagged on big results.
+
+## [0.4.1]
+
+- New: **query history list** - the ▾ button next to ← → lists the queries of the results tab (newest first, with the time; the one shown now is checked; one from another namespace or user says which). Choose one to run it again on its namespace and user. Hover shows the full SQL.
+- New: **Clear history** (at the bottom of that list, or **IRIS SQL: Clear Query History** in the Command Palette) forgets every query but the one shown now.
+
 ## [0.4.0]
 
 - New: **right-click a cell** in the results: filter by its value (`=`, `≠`, `>` / `<`, for dates *on that day* / *after* / *before*, *contains...*, *is empty* / *is not empty*), or **Filter column...** for any operator (also *between*, *starts with*, *does not contain*). The query runs again with the condition added.

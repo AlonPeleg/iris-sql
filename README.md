@@ -65,9 +65,16 @@ it off (and on again) without losing it, ✕ to remove it. Conditions are joined
 the chips added. A query that starts with `WITH` cannot take chips - edit the SQL instead. When you edit the SQL text
 yourself and run it, that text becomes the new starting point (the chips fold into it).
 
-**← →** (Alt+Left / Alt+Right) go back and forward through the queries of the tab (the last 50).
+**← →** (Alt+Left / Alt+Right) go back and forward through the queries of the tab (the last 50). **▾** lists them
+(newest first, with the time; the one shown now is checked) - choose one to run it again on its namespace and user.
+**Clear history** at the bottom of that list (or **IRIS SQL: Clear Query History**) forgets all but the current one.
+The history is kept in memory only: closing the results tab keeps it, reloading or closing VS Code clears it.
 
-**Columns** shows / hides columns; drag a column title to move it. Clicking a column title sorts the loaded rows
+**Columns** lists every column of the query (with a search box). Tick the ones you want, then:
+**Run with these** runs the query with only those columns (`SELECT "ID", "Name" ...`; all or none ticked =
+`SELECT *`), or **Hide here** just hides the others on the page without running anything. Nothing happens while you
+tick. A `columns: ...` chip shows the choice (click it to change, ✕ to go back to `*`); conditions and sort can still
+use columns that are not selected. Drag a column title to move it. Clicking a column title sorts the loaded rows
 (no query); the filter box searches the loaded rows. Double-click a cell (or select it and press Ctrl+C) to copy its
 value. **Copy for Excel**, **Copy CSV**, **Save CSV...** (UTF-8 with BOM, so Excel shows Hebrew correctly) and
 **Open as JSON** take every loaded row, in the current sort and filter, with the columns shown. At most 2,000 rows

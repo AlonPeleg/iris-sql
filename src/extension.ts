@@ -314,6 +314,7 @@ async function newQueryDoc(ns: NamespaceTarget | undefined, body: string) {
 // Running a query and showing the results
 // ------------------------------------------------------------------------------------------------
 
+type HistoryEntry = { ns: NamespaceTarget; state: QueryState; sql: string; where: string; at: number };
 type RunView = { state: QueryState; push: boolean; pos?: number };
 const HISTORY_MAX = 50;
 
@@ -324,7 +325,7 @@ class Results {
     private pending: any[] = [];
     last?: { ns: NamespaceTarget; sql: string; result?: QueryResult };
     private state?: QueryState;
-    private history: { ns: NamespaceTarget; state: QueryState }[] = [];
+    private history: HistoryEntry[] = [];
     private pos = -1;
 
     constructor(private readonly extensionUri: vscode.Uri,
@@ -355,15 +356,36 @@ class Results {
     /** A query is about to run: it becomes the current one (and a new history entry, unless Back / Forward / refresh). */
     begin(ns: NamespaceTarget, state: QueryState, push: boolean, pos?: number) {
         this.state = state;
-        if (pos !== undefined && this.history[pos]) { this.pos = pos; return; }
+        const entry = (): HistoryEntry => ({
+            ns, state: clone(state), sql: buildSql(state).sql,
+            where: ns.label + (loginUserFor(ns) ? ` (as ${loginUserFor(ns)})` : ''), at: Date.now()
+        });
+        if (pos !== undefined && this.history[pos]) { this.pos = pos; this.history[pos].at = Date.now(); return; }
         if (push) {
             this.history = this.history.slice(0, this.pos + 1);
-            this.history.push({ ns, state: clone(state) });
+            this.history.push(entry());
             if (this.history.length > HISTORY_MAX) this.history.shift();
             this.pos = this.history.length - 1;
         } else if (this.pos >= 0 && this.history[this.pos]) {
-            this.history[this.pos] = { ns, state: clone(state) };
+            this.history[this.pos] = entry();
         }
+    }
+
+    /** A result came back: with * (no column choice, no count) its columns are the ones the Columns box offers. */
+    noteColumns(columns: string[]) {
+        const st = this.state;
+        if (!st || st.group || st.cols?.length) return;
+        st.allCols = columns.slice();
+        const h = this.history[this.pos];
+        if (h) h.state.allCols = columns.slice();
+    }
+
+    /** Clear Query History: forgets every query but the one shown now. */
+    clearHistory() {
+        const cur = this.history[this.pos];
+        this.history = cur ? [cur] : [];
+        this.pos = cur ? 0 : -1;
+        if (this.panel) this.post({ type: 'state', ...this.stateMsg() });
     }
 
     /** What the page needs to draw the chips and the Back / Forward buttons. */
@@ -373,10 +395,14 @@ class Results {
             state: {
                 conds: (st?.conds ?? []).map(c => ({ ...c, label: condLabel(c) })),
                 sort: st?.sort ?? null,
-                group: st?.group ?? null
+                group: st?.group ?? null,
+                cols: st?.cols ?? [],
+                allCols: st?.allCols ?? []
             },
             canBack: this.pos > 0,
-            canForward: this.pos >= 0 && this.pos < this.history.length - 1
+            canForward: this.pos >= 0 && this.pos < this.history.length - 1,
+            // newest first, for the history list next to the arrows
+            history: this.history.map((h, i) => ({ i, sql: h.sql, where: h.where, at: h.at, current: i === this.pos })).reverse()
         };
     }
 
@@ -430,8 +456,9 @@ class Results {
                 return;
             }
             case 'toEditor': await this.toEditor(ns, String(m.sql ?? this.last.sql)); return;
-            case 'back': case 'forward': {
-                const to = this.pos + (m.type === 'back' ? -1 : 1);
+            case 'clearHistory': this.clearHistory(); return;
+            case 'back': case 'forward': case 'goto': {
+                const to = m.type === 'goto' ? Number(m.index) : this.pos + (m.type === 'back' ? -1 : 1);
                 const h = this.history[to];
                 if (!h) return;
                 await this.run(h.ns, buildSql(h.state).sql, { state: clone(h.state), push: false, pos: to });
@@ -455,6 +482,13 @@ class Results {
                 await this.change(st => { st.sort = { col: m.col, dir: m.dir === 'DESC' ? 'DESC' : 'ASC' }; st.group = undefined; });
                 return;
             case 'clearSort': await this.change(st => { st.sort = undefined; }); return;
+            case 'setCols': {
+                // Run with these: every column (or none) checked = back to *
+                const all = this.state?.allCols ?? this.last.result?.columns ?? [];
+                const cols: string[] = Array.isArray(m.cols) ? m.cols.filter((c: unknown) => typeof c === 'string') : [];
+                await this.change(st => { st.cols = cols.length && !(cols.length >= all.length && all.every(c => cols.includes(c))) ? cols : undefined; });
+                return;
+            }
             case 'countBy':
                 if (typeof m.col !== 'string') return;
                 await this.change(st => { st.group = m.col; st.sort = undefined; });
@@ -535,6 +569,7 @@ export function activate(context: vscode.ExtensionContext) {
             });
             if (!r) { results.post({ type: 'error', where: where(), sql, message: 'Not run: no password was given.', ...results.stateMsg() }); return; }
             results.last = { ns, sql, result: r };
+            results.noteColumns(r.columns);
             log(`  ${r.rows.length} rows, ${r.ms} ms`);
             results.post({ type: 'result', where: where(), sql, columns: r.columns, rows: r.rows, ms: r.ms, maxShown: Math.max(1, cfg().get<number>('maxRowsShown', 2000)), ...results.stateMsg() });
         } catch (e: any) {
@@ -733,6 +768,7 @@ export function activate(context: vscode.ExtensionContext) {
             if (!count) return;
             await run(n.ns, topBottomSql(n.table, Number(count.trim()), which.last));
         }),
+        vscode.commands.registerCommand('irisSql.clearHistory', () => results.clearHistory()),
         vscode.commands.registerCommand('irisSql.countRows', async (n?: Node) => {
             if (!n || n.t !== 'table') return;
             await run(n.ns, `SELECT COUNT(*) AS "Rows" FROM ${qualified(n.table.schema, n.table.name)}`);
@@ -744,6 +780,7 @@ export function activate(context: vscode.ExtensionContext) {
             results.post({ type: 'running', where: ns.label, sql, ...results.stateMsg() });
             const { raw } = await listColumns(c, n.table, queryOptions());
             results.last = { ns, sql, result: raw };
+            results.noteColumns(raw.columns);
             results.post({ type: 'result', where: ns.label, sql, columns: raw.columns, rows: raw.rows, ms: raw.ms, maxShown: 100000, ...results.stateMsg() });
         })),
         vscode.commands.registerCommand('irisSql.queryFromTable', async (n?: Node) => {

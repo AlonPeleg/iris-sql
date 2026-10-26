@@ -76,13 +76,16 @@ td.sel { outline: 1px solid var(--vscode-focusBorder); outline-offset: -1px; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
 /* right-click menu, drawn like VS Code's own */
-.menu { position: fixed; z-index: 20; min-width: 220px; max-width: 460px; padding: 4px 0; font-size: 12px;
+.menu { position: fixed; z-index: 20; min-width: 220px; max-width: min(680px, 96vw); padding: 4px 0; font-size: 12px;
         color: var(--vscode-menu-foreground, var(--vscode-foreground)); background: var(--vscode-menu-background, var(--vscode-editorWidget-background));
         border: 1px solid var(--vscode-menu-border, var(--vscode-widget-border, rgba(128,128,128,.35))); border-radius: 4px;
         box-shadow: 0 2px 8px var(--vscode-widget-shadow, rgba(0,0,0,.36)); }
 .menu .item { padding: 4px 18px 4px 12px; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .menu .item:hover, .menu .item.focus { color: var(--vscode-menu-selectionForeground, inherit); background: var(--vscode-menu-selectionBackground, var(--vscode-list-activeSelectionBackground)); }
 .menu .sep { height: 1px; margin: 4px 0; background: var(--vscode-menu-separatorBackground, rgba(128,128,128,.35)); }
+.menu { max-height: 70vh; overflow-y: auto; }
+.menu .item.hist { font-family: var(--vscode-editor-font-family, monospace); max-width: 640px; }
+.menu .item.cur { font-weight: 600; cursor: default; }
 .menu .head { padding: 2px 12px 4px; font-size: 11px; color: var(--vscode-descriptionForeground); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 /* the condition box (Filter column... / editing a chip) and the Columns list */
@@ -97,3 +100,11 @@ td.sel { outline: 1px solid var(--vscode-focusBorder); outline-offset: -1px; }
 .pop .hint { font-size: 11px; color: var(--vscode-descriptionForeground); margin: -2px 0 8px; }
 .pop .cols { max-height: 50vh; overflow: auto; margin-bottom: 8px; }
 .pop .cols label { display: flex; gap: 6px; align-items: center; padding: 2px 0; font-family: var(--vscode-editor-font-family, monospace); cursor: pointer; }
+
+/* the Columns box: search, tick, then Hide here / Run with these */
+.pop.colsbox { width: 320px; }
+.pop .colsearch { width: 100%; box-sizing: border-box; margin-bottom: 6px; }
+.pop .quick { font-size: 11px; margin-bottom: 4px; }
+.pop .quick a { color: var(--vscode-textLink-foreground, #3794ff); text-decoration: none; }
+.pop .quick a:hover { text-decoration: underline; }
+.pop .notloaded { margin-left: auto; font-size: 10px; color: var(--vscode-descriptionForeground); font-family: var(--vscode-font-family); }
